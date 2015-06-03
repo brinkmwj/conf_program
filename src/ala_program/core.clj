@@ -9,7 +9,29 @@
 
 (def data-file (io/file
                  (io/resource 
-                   "2701.txt")))
+                   "biglist.csv")))
+
+(def file-lines
+  (clojure.string/split-lines (slurp data-file)))
+
+(def clean-lines
+  (map (fn [x] (clojure.string/replace x #"\s+" " ")) file-lines))
+
+(def starters
+  (map (fn [x] (take 2 (clojure.string/split x #" "))) clean-lines))
+
+(def trigram-list
+  (apply concat (map (fn [x] (partition 3 1 (clojure.string/split x #" "))) clean-lines)))
+
+(def bigram-counts
+  (frequencies (map (fn [x] (take 2 x)) trigram-list)))
+
+(def trigram-lookup-list
+  (group-by (fn [x] (take 2 x)) trigram-list))
+
+
+
+
 
 (defn get-corpus []
   (group-by (fn [x] (take 2 (key x))) (frequencies (partition 3 1 (take 100000 (clojure.string/split (clojure.string/replace (slurp data-file) #"\s+" " ") #" "))))))
@@ -41,7 +63,7 @@
   (clojure.string/join " " (get-some-words (list "the" "wall") 15)))
 
 (defn get-one-panel []
-  (response {:title (get-one-title) :author "Author name"}))
+  (response {:title bigram-counts :author "Author name"}))
 
 (defroutes app-routes
   (GET "/" [] "<h1>floop</h1>")
