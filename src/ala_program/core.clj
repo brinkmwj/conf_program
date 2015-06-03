@@ -5,7 +5,9 @@
   (:require [compojure.handler :as handler]
             [compojure.route :as route]
             [ring.middleware.json :as middleware]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [clj-time.core :as t] 
+            [clj-time.format :as f]))
 
 (def data-file (io/file
                  (io/resource 
@@ -53,38 +55,41 @@
 (defn get-random-panel []
   (clojure.string/join " " (get-random-from (get-random-starter))))
 
-(defn levenshtein [w1 w2]
-  (letfn [(cell-value [same-char? prev-row cur-row col-idx]
-            (min (inc (nth prev-row col-idx))
-                 (inc (last cur-row))
-                 (+ (nth prev-row (dec col-idx)) (if same-char?
-                                                   0
-                                                   1))))]
-    (loop [row-idx  1
-           max-rows (inc (count w2))
-           prev-row (range (inc (count w1)))]
-      (if (= row-idx max-rows)
-        (last prev-row)
-        (let [ch2           (nth w2 (dec row-idx))
-              next-prev-row (reduce (fn [cur-row i]
-                                      (let [same-char? (= (nth w1 (dec i)) ch2)]
-                                        (conj cur-row (cell-value same-char?
-                                                                  prev-row
-                                                                  cur-row
-                                                                  i))))
-                                    [row-idx] (range 1 (count prev-row)))]
-          (recur (inc row-idx) max-rows next-prev-row))))))
+(defn count-colons [pname]
+  (count (re-seq #":" pname)))
 
-(defn min-lev-dist [string coll]
-  (reduce min (map (fn [x] (levenshtein string x)) coll)))
+(defn reject-panel? [pname]
+  (or (some #(= pname %) file-lines);;Matches our input corpus
+      (> (count-colons pname) 1)))  ;;More than one colon in the title
 
-(defn get-one-panel []
-  (let [pname (get-random-panel)]
-    (response {:title pname :alreadyhere (some #(= pname %) file-lines)})))
+(def panel-names (filter #(not (reject-panel? %)) (repeatedly get-random-panel)))
+
+(def time-slots
+  '("8:30am" "8:50am" "9:20am" "10:30am" "10:50am" "11:10am"
+    "1:00pm" "1:20pm" "1:50pm" "2:10pm" "3:00pm" "3:20pm" "3:40pm"))
+
+(def date-formatter
+  (f/formatter "EEEE, MMMMM d, y"))
+
+(defn get-date [whichday] 
+  (f/unparse date-formatter (t/date-time 2112 06 25)))
+
+(defn get-one-panel [x]
+  (response {:date (get-date (int (/ x (count time-slots))))
+             :time (nth time-slots (mod x (count time-slots))) 
+             :title (nth panel-names x)}))
+
+(defn parse-int [s]
+   (Integer. (re-find  #"\d+" s)))
 
 (defroutes app-routes
   (GET "/" [] "<h1>floop</h1>")
-  (GET "/a_panel" [] (get-one-panel))
+  (context "/sessions" [] 
+           (defroutes documents-routes
+             (GET "/" [] (get-one-panel 0))
+             (context "/:id" [id] 
+                      (defroutes document-routes
+                        (GET "/" [] (get-one-panel (parse-int id)))))))
   (route/not-found "Not Found"))
 
 (def app

@@ -8,6 +8,7 @@
                  [ring/ring-jetty-adapter "1.3.2"]
                  [compojure "1.3.4"]
                  [ring/ring-json "0.3.1"]
-                 [cheshire "5.5.0"]]
+                 [cheshire "5.5.0"]
+                 [clj-time "0.9.0"]]
   :plugins [[lein-ring "0.9.4"]]
   :ring {:handler ala-program.core/app})
