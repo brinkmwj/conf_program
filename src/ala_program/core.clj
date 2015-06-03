@@ -35,17 +35,17 @@
 (def trigram-list
   (concat enders (apply concat (map (fn [x] (partition 3 1 (clojure.string/split x #" "))) clean-lines))))
 
-(defn get-two-and-lowercase [trigram]
-  (map clojure.string/lower-case (take 2 trigram)))
+(defn get-key-from-trigram [trigram]
+  (map (fn [x] (clojure.string/replace (clojure.string/lower-case x) #"[^a-zA-Z0-9]" "")) (take 2 trigram)))
 
 (def trigram-lookup-list
-  (group-by get-two-and-lowercase trigram-list))
+  (group-by get-key-from-trigram trigram-list))
 
 (defn get-random-starter []
   (nth starters (rand-int (count starters))))
 
 (defn get-random-next-trigram [bigram]
-  (let [options (trigram-lookup-list (get-two-and-lowercase bigram))]
+  (let [options (trigram-lookup-list (get-key-from-trigram bigram))]
     (nth options (rand-int (count options)))))
 
 (defn get-random-from [bigram]
