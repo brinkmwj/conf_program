@@ -78,9 +78,9 @@
   (f/unparse date-formatter (t/plus (t/date-time 2112 06 25) (t/days whichday))))
 
 (defn get-one-panel [x]
-  (response {:date (get-date (int (/ x (count time-slots))))
-             :time (nth time-slots (mod x (count time-slots))) 
-             :title (nth panel-names x)}))
+  (hash-map :date (get-date (int (/ x (count time-slots)))),
+            :time (nth time-slots (mod x (count time-slots))), 
+            :title (nth panel-names x)))
 
 (defn parse-int [s]
    (Integer. (re-find  #"\d+" s)))
@@ -92,7 +92,10 @@
              (GET "/" [] (get-one-panel 0))
              (context "/:id" [id] 
                       (defroutes document-routes
-                        (GET "/" [] (get-one-panel (parse-int id)))))))
+                        (GET "/" [] (response (get-one-panel (parse-int id))))))
+             (context "/:id1/:id2" [id1 id2] 
+                      (defroutes document-routes
+                        (GET "/" [] (response (map get-one-panel (range (parse-int id1) (parse-int id2)))))))))
   (route/not-found "Not Found"))
 
 (def app
