@@ -28,8 +28,8 @@
 	<p class="lead">A fake conference with an infinite line-up of exciting talks.</p>
       </div>
       <div>
-	<a href="" class="btn btn-primary">Previous day</a>
-	<a href="" class="btn btn-primary">Next day</a>
+	<a onclick='decDay()' class="btn btn-primary">Previous day</a>
+	<a onclick='incDay()' class="btn btn-primary">Next day</a>
       </div>
       <div>
 	<h2 id="whichday">Saturday, June 25, 2112</h2>
@@ -60,8 +60,22 @@
     <!-- Latest compiled and minified JavaScript -->
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
     <script>
-      $(document).ready(function(){
-        $.getJSON("/sessions/13/26" , function(data) {
+      var which_day = 0;
+
+      function incDay(){
+        which_day += 1;
+        loadTable();
+      }
+
+      function decDay(){
+        which_day -= 1;
+        which_day = Math.max(0,which_day);
+        loadTable();
+      }
+
+      function loadTable(){
+        var data_url = "/sessions/"+(13*which_day)+"/"+(13*(which_day+1));
+        $.getJSON(data_url, function(data) {
           var tbl_body = "";
           var the_day = "";
           $.each(data, function() {
@@ -74,7 +88,9 @@
           $("#schedule").html(tbl_body);
           $("#whichday").html(the_day);
         });
-      });
+      }
+
+      $(document).ready(loadTable());
     </script>
   </body>
 </html>
