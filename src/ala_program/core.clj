@@ -13,6 +13,9 @@
                  (io/resource 
                    "biglist.csv")))
 
+(def home-page (io/file
+                (io/resource
+                 "index.html")))
 (def file-lines
   (clojure.string/split-lines (slurp data-file)))
 
@@ -72,7 +75,7 @@
   (f/formatter "EEEE, MMMMM d, y"))
 
 (defn get-date [whichday] 
-  (f/unparse date-formatter (t/date-time 2112 06 25)))
+  (f/unparse date-formatter (t/plus (t/date-time 2112 06 25) (t/days whichday))))
 
 (defn get-one-panel [x]
   (response {:date (get-date (int (/ x (count time-slots))))
@@ -83,7 +86,7 @@
    (Integer. (re-find  #"\d+" s)))
 
 (defroutes app-routes
-  (GET "/" [] "<h1>floop</h1>")
+  (GET "/" [] (slurp home-page))
   (context "/sessions" [] 
            (defroutes documents-routes
              (GET "/" [] (get-one-panel 0))
