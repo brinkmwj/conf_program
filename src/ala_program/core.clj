@@ -62,8 +62,9 @@
   (count (re-seq #":" pname)))
 
 (defn reject-panel? [pname]
-  (or (some #(= pname %) file-lines);;Matches our input corpus
-      (> (count-colons pname) 1)))  ;;More than one colon in the title
+  (or (some #(not= -1 (.indexOf % pname)) file-lines) ;;Matches our input corpus
+      (> (count-colons pname) 1)    ;;More than one colon in title
+      (< (count (clojure.string/split pname #" ")) 4))) ;;Less than four words in the title
 
 (def panel-names (filter #(not (reject-panel? %)) (repeatedly get-random-panel)))
 
