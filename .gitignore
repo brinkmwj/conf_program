@@ -1,3 +1,5 @@
+creds.txt
+
 *.log
 /target
 /classes

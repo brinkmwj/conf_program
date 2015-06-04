@@ -2,6 +2,13 @@
   (:use compojure.core)
   (:use cheshire.core)
   (:use ring.util.response)
+  (:use
+   [twitter.oauth]
+   [twitter.callbacks]
+   [twitter.callbacks.handlers]
+   [twitter.api.restful])
+  (:import
+   (twitter.callbacks.protocols SyncSingleCallback))
   (:require [compojure.handler :as handler]
             [compojure.route :as route]
             [ring.middleware.json :as middleware]
@@ -17,9 +24,15 @@
                 (io/resource
                  "index.html")))
 
+(def cred-file (io/file
+                (io/resource
+                 "creds.txt")))
+
 (def file-lines
   "Raw lines of corpus. Used for creating trigrams and reject testing."
   (clojure.string/split-lines (slurp data-file)))
+
+(def my-creds (apply make-oauth-creds (clojure.string/split-lines (slurp cred-file))))
 
 (defn ender?
   "Check a tri-gram to see if it a sentence ender (indicated by nil sentinel in last position)"
@@ -94,6 +107,10 @@
   (hash-map :date (get-date (int (/ x (count time-slots)))),
             :time (nth time-slots (mod x (count time-slots))), 
             :title (nth panel-names x)))
+
+(defn do-one-tweet []
+  (statuses-update :oauth-creds my-creds
+                   :params {:status "hello world"}))
 
 (defn parse-int [s]
    (Integer. (re-find  #"\d+" s)))
