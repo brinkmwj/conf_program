@@ -27,9 +27,8 @@
 (defn get-key-from-trigram [trigram]
   (map (fn [x] (clojure.string/replace (clojure.string/lower-case x) #"[^a-zA-Z0-9]" "")) (take 2 trigram)))
 
-;;Don't want any lines with less than 2 words because they can't generate useful data
 ;;This is only used to create starters, enders, trigram-list
-(let [clean-lines
+(let [clean-lines ;;Don't want any lines with less than 2 words because they can't generate useful data
       (filter (fn [x] (>= (count x) 2)) (map (fn [x] (clojure.string/replace x #"\s+" " ")) file-lines))]
 
   ;;I'm going to use this over and over
