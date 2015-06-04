@@ -17,49 +17,52 @@
                 (io/resource
                  "index.html")))
 
-;;I'm going to re-use this over and over in reject?
 (def file-lines
+  "Raw lines of corpus. Used for creating trigrams and reject testing."
   (clojure.string/split-lines (slurp data-file)))
 
-(defn ender? [x]
-  (nil? (nth x 2)))
+(defn ender?
+  "Check a tri-gram to see if it a sentence ender (indicated by nil sentinel in last position)"
+  [x] (nil? (nth x 2)))
 
-(defn get-key-from-trigram [trigram]
-  (map (fn [x] (clojure.string/replace (clojure.string/lower-case x) #"[^a-zA-Z0-9]" "")) (take 2 trigram)))
+(defn get-key-from-trigram
+  "The key for a trigram is the first two words, lowercased, and with non-alphanumeric characters removed"
+  [trigram] (map (fn [x] (clojure.string/replace (clojure.string/lower-case x) #"[^a-zA-Z0-9]" "")) (take 2 trigram)))
 
-;;This is only used to create starters, enders, trigram-list
 (let [clean-lines ;;Don't want any lines with less than 2 words because they can't generate useful data
       (filter (fn [x] (>= (count x) 2)) (map (fn [x] (clojure.string/replace x #"\s+" " ")) file-lines))]
 
-  ;;I'm going to use this over and over
   (def starters
+    "List of bigrams that can start a session title"
     (vec (map (fn [x] (take 2 (clojure.string/split x #" "))) clean-lines)))
 
-  ;;I'm going to use this over and over
   (def enders
+    "List of nil-terminated trigrams that can end a session title."
     (map (fn [x] (concat (take-last 2 (clojure.string/split x #" ")) (list nil))) clean-lines))
 
-  ;;Only used to build trigram-lookup-list
   (defn trigram-list []
+    "Generate list of all trigrams from source corpus, including ender trigrams"
     (concat enders (apply concat (map (fn [x] (partition 3 1 (clojure.string/split x #" "))) clean-lines))))
 
-  ;;Used over and over
   (def trigram-lookup-list
+    "The main data structure. Allows lookup of all trigrams that start with a certain bigram."
     (group-by get-key-from-trigram (trigram-list))));;end let clean-lines
 
 (defn get-random-starter []
   (nth starters (rand-int (count starters))))
 
-(defn get-random-next-trigram [bigram]
-  (let [options (trigram-lookup-list (get-key-from-trigram bigram))]
-    (nth options (rand-int (count options)))))
+(defn get-random-next-trigram
+  "Given a bigram, select a random trigram that starts with that bigram."
+  [bigram] (let [options (trigram-lookup-list (get-key-from-trigram bigram))]
+             (nth options (rand-int (count options)))))
 
-(defn get-random-from [bigram]
-  (let [next-trigram (get-random-next-trigram bigram)]
-    (cons (first bigram) 
-          (if (ender? next-trigram)
-            (list (nth bigram 1))
-            (get-random-from (rest next-trigram))))))
+(defn get-random-from
+  "Given a bigram, recursively construct a session title starting with that bigram."
+  [bigram] (let [next-trigram (get-random-next-trigram bigram)]
+             (cons (first bigram) 
+                   (if (ender? next-trigram)
+                     (list (nth bigram 1))
+                     (get-random-from (rest next-trigram))))))
 
 (defn get-random-panel []
   (clojure.string/join " " (get-random-from (get-random-starter))))
@@ -67,12 +70,15 @@
 (defn count-colons [pname]
   (count (re-seq #":" pname)))
 
-(defn reject-panel? [pname]
-  (or (some #(not= -1 (.indexOf % pname)) file-lines) ;;Matches our input corpus
-      (> (count-colons pname) 1)    ;;More than one colon in title
-      (< (count (clojure.string/split pname #" ")) 4))) ;;Less than four words in the title
+(defn reject-panel?
+  "Provides quality control. Reject obviously bad panel titles."
+  [pname] (or (some #(not= -1 (.indexOf % pname)) file-lines) ;;Matches our input corpus
+              (> (count-colons pname) 1)    ;;More than one colon in title
+              (< (count (clojure.string/split pname #" ")) 4))) ;;Less than four words in the title
 
-(def panel-names (filter #(not (reject-panel? %)) (repeatedly get-random-panel)))
+(def panel-names
+  "Cache of panel-names generated so far."
+  (filter #(not (reject-panel? %)) (repeatedly get-random-panel)))
 
 (def time-slots
   '("8:30am" "8:50am" "9:20am" "10:30am" "10:50am" "11:10am"
