@@ -16,30 +16,37 @@
 (def home-page (io/file
                 (io/resource
                  "index.html")))
+
+;;I'm going to re-use this over and over in reject?
 (def file-lines
   (clojure.string/split-lines (slurp data-file)))
-
-;;Don't want any lines with less than 2 words because they can't generate useful data
-(def clean-lines
-  (filter (fn [x] (>= (count x) 2)) (map (fn [x] (clojure.string/replace x #"\s+" " ")) file-lines)))
-
-(def starters
-  (vec (map (fn [x] (take 2 (clojure.string/split x #" "))) clean-lines)))
-
-(def enders
-  (map (fn [x] (concat (take-last 2 (clojure.string/split x #" ")) (list nil))) clean-lines))
 
 (defn ender? [x]
   (nil? (nth x 2)))
 
-(def trigram-list
-  (concat enders (apply concat (map (fn [x] (partition 3 1 (clojure.string/split x #" "))) clean-lines))))
-
 (defn get-key-from-trigram [trigram]
   (map (fn [x] (clojure.string/replace (clojure.string/lower-case x) #"[^a-zA-Z0-9]" "")) (take 2 trigram)))
 
-(def trigram-lookup-list
-  (group-by get-key-from-trigram trigram-list))
+;;Don't want any lines with less than 2 words because they can't generate useful data
+;;This is only used to create starters, enders, trigram-list
+(let [clean-lines
+      (filter (fn [x] (>= (count x) 2)) (map (fn [x] (clojure.string/replace x #"\s+" " ")) file-lines))]
+
+  ;;I'm going to use this over and over
+  (def starters
+    (vec (map (fn [x] (take 2 (clojure.string/split x #" "))) clean-lines)))
+
+  ;;I'm going to use this over and over
+  (def enders
+    (map (fn [x] (concat (take-last 2 (clojure.string/split x #" ")) (list nil))) clean-lines))
+
+  ;;Only used to build trigram-lookup-list
+  (defn trigram-list []
+    (concat enders (apply concat (map (fn [x] (partition 3 1 (clojure.string/split x #" "))) clean-lines))))
+
+  ;;Used over and over
+  (def trigram-lookup-list
+    (group-by get-key-from-trigram (trigram-list))));;end let clean-lines
 
 (defn get-random-starter []
   (nth starters (rand-int (count starters))))
