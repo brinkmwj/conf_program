@@ -76,7 +76,7 @@
   (f/formatter "EEEE, MMMMM d, y"))
 
 (defn get-date [whichday] 
-  (f/unparse date-formatter (t/plus (t/date-time 2112 06 25) (t/days whichday))))
+  (f/unparse date-formatter (t/plus (t/date-time 3015 06 24) (t/days whichday))))
 
 (defn get-one-panel [x]
   (hash-map :date (get-date (int (/ x (count time-slots)))),
