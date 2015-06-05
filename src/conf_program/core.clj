@@ -1,4 +1,4 @@
-(ns ala-program.core 
+(ns conf-program.core 
   (:use compojure.core)
   (:use cheshire.core)
   (:use ring.util.response)

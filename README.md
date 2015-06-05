@@ -1,14 +1,9 @@
-# ala_program
+# conf_program
 
-A Clojure library designed to ... well, that part is up to you.
+A combination RESTful web service, jQuery front page, and Twitter bot. Meant to help me practice clojure programming.
+
+See http://farfarfuture.org and @farfar_conf on Twitter.
 
 ## Usage
 
-FIXME
-
-## License
-
-Copyright © 2015 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+lein trampoline ring server-headless
