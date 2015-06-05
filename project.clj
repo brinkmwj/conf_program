@@ -1,6 +1,7 @@
 (defproject ala_program "0.1.0-SNAPSHOT"
-  :description "Web service to randomly generate ALA session names"
-  :url "http://bobrinkman.com:3000"
+  :main ala_program.core
+  :description "Web service to randomly generate library conference session names"
+  :url "http://github.com/brinkmwj/ala_program"
   :license {:name "GNU General Public License"
             :url "https://github.com/brinkmwj/ala_program/blob/master/LICENSE"}
   :dependencies [[org.clojure/clojure "1.6.0"] 
