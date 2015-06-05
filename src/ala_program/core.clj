@@ -94,9 +94,12 @@
               (> (count-colons pname) 1)    ;;More than one colon in title
               (< (count (clojure.string/split pname #" ")) 4))) ;;Less than four words in the title
 
+(defn get-random-nonreject-panel [] 
+  (first (filter #(not (reject-panel? %)) (repeatedly get-random-panel))))
+
 (def panel-names
   "Cache of panel-names generated so far."
-  (filter #(not (reject-panel? %)) (repeatedly get-random-panel)))
+  (repeatedly get-random-nonreject-panel))
 
 (def start-time (t/from-time-zone (t/today-at 0 0) (t/time-zone-for-offset -4)))
 
