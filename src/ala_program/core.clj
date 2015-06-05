@@ -179,20 +179,22 @@
   (cancel-chime-schedule))
 
 (defn parse-int
+  "Extract the first integer found in a string. If not found return 0."
   [s]
-  (Integer. (re-find  #"\d+" s)))
+  (Integer. (or (re-find  #"\d+" s) "0")))
 
 (defroutes app-routes
   (GET "/" [] (slurp home-page))
   (context "/sessions" [] 
            (defroutes documents-routes
-             (GET "/" [] (response (map get-one-session (range 0 13)))) ;;Default is to give first day's program
+             (GET "/" {params :params} (response 
+                                        (map get-one-session 
+                                             (range 
+                                              (parse-int (or (params :start) "0")) 
+                                              (parse-int (or (params :end) "13")))))) ;;Default is to give first day's program
              (context "/:id" [id] 
                       (defroutes document-routes
-                        (GET "/" [] (response (get-one-session (parse-int id))))))
-             (context "/:id1/:id2" [id1 id2] 
-                      (defroutes document-routes
-                        (GET "/" [] (response (map get-one-session (range (parse-int id1) (parse-int id2)))))))))
+                        (GET "/" [] (response (get-one-session (parse-int id))))))))
   (route/not-found "Not Found"))
 
 (def app

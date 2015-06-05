@@ -74,7 +74,7 @@
       }
 
       function loadTable(){
-        var data_url = "/sessions/"+(13*which_day)+"/"+(13*(which_day+1));
+        var data_url = "/sessions?start="+(13*which_day)+"&end="+(13*(which_day+1));
         $.getJSON(data_url, function(data) {
           var tbl_body = "";
           var the_day = "";
