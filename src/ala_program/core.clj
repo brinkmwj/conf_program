@@ -14,7 +14,8 @@
             [ring.middleware.json :as middleware]
             [clojure.java.io :as io]
             [clj-time.core :as t] 
-            [clj-time.format :as f]))
+            [clj-time.format :as f]
+            [chime :refer [chime-at]]))
 
 (def data-file (io/file
                  (io/resource 
@@ -83,9 +84,13 @@
 (defn count-colons [pname]
   (count (re-seq #":" pname)))
 
+(defn panel-to-tweet [x]
+  (clojure.string/join "" (list (x :date) ", " (x :time) ": " (x :title))))
+
 (defn reject-panel?
   "Provides quality control. Reject obviously bad panel titles."
-  [pname] (or (some #(not= -1 (.indexOf % pname)) file-lines) ;;Matches our input corpus
+  [pname] (or (> (count pname) 120) ;;Want it short enough to tweet
+              (some #(not= -1 (.indexOf % pname)) file-lines) ;;Matches our input corpus
               (> (count-colons pname) 1)    ;;More than one colon in title
               (< (count (clojure.string/split pname #" ")) 4))) ;;Less than four words in the title
 
@@ -93,24 +98,44 @@
   "Cache of panel-names generated so far."
   (filter #(not (reject-panel? %)) (repeatedly get-random-panel)))
 
-(def time-slots
-  '("8:30am" "8:50am" "9:20am" "10:30am" "10:50am" "11:10am"
-    "1:00pm" "1:20pm" "1:50pm" "2:10pm" "3:00pm" "3:20pm" "3:40pm"))
+(def start-time (t/today-at 0 0))
 
-(def date-formatter
-  (f/formatter "EEEE, MMMMM d, y"))
+(def time-offsets
+  "Presentation times assuming 20 minute talks, coffee breaks, and lunch break"
+  '((8 30) (8 50) (9 20) (10 30) (10 50) (11 10) (13 0) (13 20) (13 50) (14 10) (15 0) (15 20) (15 40)))
+
+;; (def date-formatter
+;;   (f/formatter "EEEE, MMMMM d, y"))
+
+(def tweet-date-formatter
+  (f/formatter "EEE, MMM d, y"))
+
+(def time-formatter
+  (f/formatter "h:mm a"))
 
 (defn get-date [whichday] 
-  (f/unparse date-formatter (t/plus (t/date-time 3015 06 24) (t/days whichday))))
+  (f/unparse tweet-date-formatter (t/plus start-time (t/years 1000) (t/days whichday))))
+
+(defn get-time [whichtime]
+  (f/unparse time-formatter (t/plus start-time (t/years 1000) (t/hours (nth whichtime 0)) (t/minutes (nth whichtime 1)))))
 
 (defn get-one-panel [x]
-  (hash-map :date (get-date (int (/ x (count time-slots)))),
-            :time (nth time-slots (mod x (count time-slots))), 
+  (hash-map :date (get-date (int (/ x (count time-offsets)))),
+            :time (get-time (nth time-offsets (mod x (count time-offsets)))), 
             :title (nth panel-names x)))
 
-(defn do-one-tweet []
+(def chime-times)
+
+(defn get-one-tweet [x] 
+  (panel-to-tweet (get-one-panel x)))
+
+(defn do-one-tweet [time]
   (statuses-update :oauth-creds my-creds
-                   :params {:status "hello world"}))
+                   :params {:status (get-one-tweet 0)}))
+
+;; (chime-at (map (fn [x] (t/plus start-time (t/minutes (* x 30)))) (range))
+;;           (fn [time]
+;;             (do-one-tweet time)))
 
 (defn parse-int [s]
    (Integer. (re-find  #"\d+" s)))

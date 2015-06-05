@@ -10,6 +10,7 @@
                  [ring/ring-json "0.3.1"]
                  [cheshire "5.5.0"]
                  [clj-time "0.9.0"]
-                 [twitter-api "0.7.8"]]
+                 [twitter-api "0.7.8"] 
+                 [jarohen/chime "0.1.6"]]
   :plugins [[lein-ring "0.9.4"]]
   :ring {:handler ala-program.core/app})
