@@ -98,7 +98,7 @@
   "Cache of panel-names generated so far."
   (filter #(not (reject-panel? %)) (repeatedly get-random-panel)))
 
-(def start-time (t/today-at 0 0))
+(def start-time (t/from-time-zone (t/today-at 0 0) (t/time-zone-for-offset -4)))
 
 (def time-offsets
   "Presentation times assuming 20 minute talks, coffee breaks, and lunch break"
@@ -108,10 +108,10 @@
 ;;   (f/formatter "EEEE, MMMMM d, y"))
 
 (def tweet-date-formatter
-  (f/formatter "EEE, MMM d, y"))
+  (f/with-zone (f/formatter "EEE, MMM d, y") (t/time-zone-for-offset -4)))
 
 (def time-formatter
-  (f/formatter "h:mm a"))
+  (f/with-zone (f/formatter "h:mm a") (t/time-zone-for-offset -4)))
 
 (defn get-date [whichday] 
   (f/unparse tweet-date-formatter (t/plus start-time (t/years 1000) (t/days whichday))))
