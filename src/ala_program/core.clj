@@ -104,9 +104,6 @@
   "Presentation times assuming 20 minute talks, coffee breaks, and lunch break"
   '((8 30) (8 50) (9 20) (10 30) (10 50) (11 10) (13 0) (13 20) (13 50) (14 10) (15 0) (15 20) (15 40)))
 
-;; (def date-formatter
-;;   (f/formatter "EEEE, MMMMM d, y"))
-
 (def tweet-date-formatter
   (f/with-zone (f/formatter "EEE, MMM d, y") (t/time-zone-for-offset -4)))
 
@@ -146,9 +143,14 @@
   (statuses-update :oauth-creds my-creds
                    :params {:status (get-one-tweet (time-to-id time))}))
 
-(chime-at chime-times
-          (fn [time]
-            (do-one-tweet time)))
+;;DANGER: In interactive mode this can cause the schedule to be reloaded over and over
+(def cancel-chime-schedule 
+  (chime-at chime-times
+            (fn [time]
+              (do-one-tweet time))))
+
+(defn cleanup-app []
+  (cancel-chime-schedule))
 
 (defn parse-int [s]
    (Integer. (re-find  #"\d+" s)))

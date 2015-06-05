@@ -13,4 +13,5 @@
                  [twitter-api "0.7.8"] 
                  [jarohen/chime "0.1.6"]]
   :plugins [[lein-ring "0.9.4"]]
-  :ring {:handler ala-program.core/app})
+  :ring {:handler ala-program.core/app
+         :destroy ala-program.core/cleanup-app})
