@@ -124,18 +124,31 @@
             :time (get-time (nth time-offsets (mod x (count time-offsets)))), 
             :title (nth panel-names x)))
 
-(def chime-times)
+(defn time-to-id [time]
+  (let [interval-len (t/in-minutes (t/interval start-time time))
+        days (int (/ interval-len (* 24 60)))
+        hours (int (/ (mod interval-len (* 24 60)) 60))
+        minutes (int (mod interval-len 60))]
+    (+ (* (count time-offsets) days)
+          (.indexOf time-offsets (list hours minutes)))))
+
+(defn id-to-time [id]
+  (let [my-offset (nth time-offsets (mod id (count time-offsets)))]
+    (t/plus start-time (t/days (int (/ id 13))) (t/hours (nth my-offset 0)) (t/minutes (nth my-offset 1)))))
+
+(def chime-times
+  (map id-to-time (range)))
 
 (defn get-one-tweet [x] 
   (panel-to-tweet (get-one-panel x)))
 
 (defn do-one-tweet [time]
   (statuses-update :oauth-creds my-creds
-                   :params {:status (get-one-tweet 0)}))
+                   :params {:status (get-one-tweet (time-to-id time))}))
 
-;; (chime-at (map (fn [x] (t/plus start-time (t/minutes (* x 30)))) (range))
-;;           (fn [time]
-;;             (do-one-tweet time)))
+(chime-at chime-times
+          (fn [time]
+            (do-one-tweet time)))
 
 (defn parse-int [s]
    (Integer. (re-find  #"\d+" s)))
