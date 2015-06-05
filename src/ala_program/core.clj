@@ -54,15 +54,17 @@
     "List of nil-terminated trigrams that can end a session title."
     (map (fn [x] (concat (take-last 2 (clojure.string/split x #" ")) (list nil))) clean-lines))
 
-  (defn trigram-list []
+  (defn trigram-list
     "Generate list of all trigrams from source corpus, including ender trigrams"
+    []
     (concat enders (apply concat (map (fn [x] (partition 3 1 (clojure.string/split x #" "))) clean-lines))))
 
   (def trigram-lookup-list
     "The main data structure. Allows lookup of all trigrams that start with a certain bigram."
     (group-by get-key-from-trigram (trigram-list))));;end let clean-lines
 
-(defn get-random-starter []
+(defn get-random-starter
+  []
   (nth starters (rand-int (count starters))))
 
 (defn get-random-next-trigram
@@ -78,28 +80,33 @@
                      (list (nth bigram 1))
                      (get-random-from (rest next-trigram))))))
 
-(defn get-random-panel []
+(defn get-random-session
+  []
   (clojure.string/join " " (get-random-from (get-random-starter))))
 
-(defn count-colons [pname]
+(defn count-colons 
+  [pname]
   (count (re-seq #":" pname)))
 
-(defn panel-to-tweet [x]
+(defn session-to-tweet
+  "Converts session info (as a map) into a tweetable string."
+  [x]
   (clojure.string/join "" (list (x :date) ", " (x :time) ": " (x :title))))
 
-(defn reject-panel?
-  "Provides quality control. Reject obviously bad panel titles."
+(defn reject-session?
+  "Provides quality control. Reject obviously bad session titles."
   [pname] (or (> (count pname) 120) ;;Want it short enough to tweet
               (some #(not= -1 (.indexOf % pname)) file-lines) ;;Matches our input corpus
               (> (count-colons pname) 1)    ;;More than one colon in title
               (< (count (clojure.string/split pname #" ")) 4))) ;;Less than four words in the title
 
-(defn get-random-nonreject-panel [] 
-  (first (filter #(not (reject-panel? %)) (repeatedly get-random-panel))))
+(defn get-random-nonreject-session
+  [] 
+  (first (filter #(not (reject-session? %)) (repeatedly get-random-session))))
 
-(def panel-names
-  "Cache of panel-names generated so far."
-  (repeatedly get-random-nonreject-panel))
+(def session-names
+  "Cache of session-names generated so far."
+  (repeatedly get-random-nonreject-session))
 
 (def start-time (t/from-time-zone (t/today-at 0 0) (t/time-zone-for-offset -4)))
 
@@ -108,23 +115,31 @@
   '((8 30) (8 50) (9 20) (10 30) (10 50) (11 10) (13 0) (13 20) (13 50) (14 10) (15 0) (15 20) (15 40)))
 
 (def tweet-date-formatter
-  (f/with-zone (f/formatter "EEE, MMM d, y") (t/time-zone-for-offset -4)))
+  (f/with-zone (f/formatter "EEE, MMM d, y") (t/time-zone-for-offset -4))) ;;Dates need to be short or else tweets will be too long
 
 (def time-formatter
   (f/with-zone (f/formatter "h:mm a") (t/time-zone-for-offset -4)))
 
-(defn get-date [whichday] 
+(defn fmt-pres-date
+  "Input is an int, the number of days since start of conference. Compute the date and format it for printing."
+  [whichday] 
   (f/unparse tweet-date-formatter (t/plus start-time (t/years 1000) (t/days whichday))))
 
-(defn get-time [whichtime]
+(defn fmt-pres-time
+  "Input is a pair which is hours and minutes since midnight. Compute the time and format it for printing."
+  [whichtime]
   (f/unparse time-formatter (t/plus start-time (t/years 1000) (t/hours (nth whichtime 0)) (t/minutes (nth whichtime 1)))))
 
-(defn get-one-panel [x]
-  (hash-map :date (get-date (int (/ x (count time-offsets)))),
-            :time (get-time (nth time-offsets (mod x (count time-offsets)))), 
-            :title (nth panel-names x)))
+(defn get-one-session
+  "Given an integer >= 0, which is the session id number, build the map with info about the session."
+  [x]
+  (hash-map :date (fmt-pres-date (int (/ x (count time-offsets)))),
+            :time (fmt-pres-time (nth time-offsets (mod x (count time-offsets)))), 
+            :title (nth session-names x)))
 
-(defn time-to-id [time]
+(defn time-to-id
+  "Given a time from the chime-times list, calculated the corresponding id."
+  [time]
   (let [interval-len (t/in-minutes (t/interval start-time time))
         days (int (/ interval-len (* 24 60)))
         hours (int (/ (mod interval-len (* 24 60)) 60))
@@ -132,43 +147,52 @@
     (+ (* (count time-offsets) days)
           (.indexOf time-offsets (list hours minutes)))))
 
-(defn id-to-time [id]
+(defn id-to-time 
+  "Given an integer >= 0, which is a session id, calculate the day/time it should be tweeted."
+  [id]
   (let [my-offset (nth time-offsets (mod id (count time-offsets)))]
-    (t/plus start-time (t/days (int (/ id 13))) (t/hours (nth my-offset 0)) (t/minutes (nth my-offset 1)))))
+    (t/plus start-time (t/days (int (/ id (count time-offsets)))) (t/hours (nth my-offset 0)) (t/minutes (nth my-offset 1)))))
 
 (def chime-times
   (map id-to-time (range)))
 
-(defn get-one-tweet [x] 
-  (panel-to-tweet (get-one-panel x)))
+(defn get-one-tweet
+  "Given an id >= 0, get a tweetable string for that session"
+  [id]
+  (session-to-tweet (get-one-session id)))
 
-(defn do-one-tweet [time]
+(defn do-one-tweet
+  "Intended to be called by chime. Takes a DateTime and makes an appropriate tweet on @farfar_conf"
+  [time]
   (statuses-update :oauth-creds my-creds
                    :params {:status (get-one-tweet (time-to-id time))}))
 
-;;DANGER: In interactive mode this can cause the schedule to be reloaded over and over
 (def cancel-chime-schedule 
-  (chime-at chime-times
+  (chime-at chime-times ;;chime-at returns a function that can be called to cancel the schedule
             (fn [time]
               (do-one-tweet time))))
 
-(defn cleanup-app []
+;;The hope is that this cancels the schedule when a live update happens, but
+;; I haven't confirmed that it works
+(defn cleanup-app
+  []
   (cancel-chime-schedule))
 
-(defn parse-int [s]
-   (Integer. (re-find  #"\d+" s)))
+(defn parse-int
+  [s]
+  (Integer. (re-find  #"\d+" s)))
 
 (defroutes app-routes
   (GET "/" [] (slurp home-page))
   (context "/sessions" [] 
            (defroutes documents-routes
-             (GET "/" [] (get-one-panel 0))
+             (GET "/" [] (response (map get-one-session (range 0 13)))) ;;Default is to give first day's program
              (context "/:id" [id] 
                       (defroutes document-routes
-                        (GET "/" [] (response (get-one-panel (parse-int id))))))
+                        (GET "/" [] (response (get-one-session (parse-int id))))))
              (context "/:id1/:id2" [id1 id2] 
                       (defroutes document-routes
-                        (GET "/" [] (response (map get-one-panel (range (parse-int id1) (parse-int id2)))))))))
+                        (GET "/" [] (response (map get-one-session (range (parse-int id1) (parse-int id2)))))))))
   (route/not-found "Not Found"))
 
 (def app
