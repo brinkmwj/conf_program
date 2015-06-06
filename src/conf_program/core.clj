@@ -1,4 +1,4 @@
-(ns conf-program.core 
+(ns conf-program.core
   (:use compojure.core)
   (:use cheshire.core)
   (:use ring.util.response)
@@ -13,12 +13,12 @@
             [compojure.route :as route]
             [ring.middleware.json :as middleware]
             [clojure.java.io :as io]
-            [clj-time.core :as t] 
+            [clj-time.core :as t]
             [clj-time.format :as f]
             [chime :refer [chime-at]]))
 
 (def data-file (io/file
-                 (io/resource 
+                 (io/resource
                    "biglist.csv")))
 
 (def home-page (io/file
@@ -75,7 +75,7 @@
 (defn get-random-from
   "Given a bigram, recursively construct a session title starting with that bigram."
   [bigram] (let [next-trigram (get-random-next-trigram bigram)]
-             (cons (first bigram) 
+             (cons (first bigram)
                    (if (ender? next-trigram)
                      (list (nth bigram 1))
                      (get-random-from (rest next-trigram))))))
@@ -84,7 +84,7 @@
   []
   (clojure.string/join " " (get-random-from (get-random-starter))))
 
-(defn count-colons 
+(defn count-colons
   [pname]
   (count (re-seq #":" pname)))
 
@@ -101,7 +101,7 @@
               (< (count (clojure.string/split pname #" ")) 4))) ;;Less than four words in the title
 
 (defn get-random-nonreject-session
-  [] 
+  []
   (first (filter #(not (reject-session? %)) (repeatedly get-random-session))))
 
 (def session-names
@@ -122,7 +122,7 @@
 
 (defn fmt-pres-date
   "Input is an int, the number of days since start of conference. Compute the date and format it for printing."
-  [whichday] 
+  [whichday]
   (f/unparse tweet-date-formatter (t/plus start-time (t/years 1000) (t/days whichday))))
 
 (defn fmt-pres-time
@@ -134,7 +134,7 @@
   "Given an integer >= 0, which is the session id number, build the map with info about the session."
   [x]
   (hash-map :date (fmt-pres-date (int (/ x (count time-offsets)))),
-            :time (fmt-pres-time (nth time-offsets (mod x (count time-offsets)))), 
+            :time (fmt-pres-time (nth time-offsets (mod x (count time-offsets)))),
             :title (nth session-names x)))
 
 (defn time-to-id
@@ -147,7 +147,7 @@
     (+ (* (count time-offsets) days)
           (.indexOf time-offsets (list hours minutes)))))
 
-(defn id-to-time 
+(defn id-to-time
   "Given an integer >= 0, which is a session id, calculate the day/time it should be tweeted."
   [id]
   (let [my-offset (nth time-offsets (mod id (count time-offsets)))]
@@ -167,7 +167,7 @@
   (statuses-update :oauth-creds my-creds
                    :params {:status (get-one-tweet (time-to-id time))}))
 
-(def cancel-chime-schedule 
+(def cancel-chime-schedule
   (chime-at chime-times ;;chime-at returns a function that can be called to cancel the schedule
             (fn [time]
               (do-one-tweet time))))
@@ -185,14 +185,14 @@
 
 (defroutes app-routes
   (GET "/" [] (slurp home-page))
-  (context "/sessions" [] 
+  (context "/sessions" []
            (defroutes documents-routes
-             (GET "/" {params :params} (response 
-                                        (map get-one-session 
-                                             (range 
-                                              (parse-int (or (params :start) "0")) 
+             (GET "/" {params :params} (response
+                                        (map get-one-session
+                                             (range
+                                              (parse-int (or (params :start) "0"))
                                               (parse-int (or (params :end) "13")))))) ;;Default is to give first day's program
-             (context "/:id" [id] 
+             (context "/:id" [id]
                       (defroutes document-routes
                         (GET "/" [] (response (get-one-session (parse-int id))))))))
   (route/not-found "Not Found"))
