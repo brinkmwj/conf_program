@@ -97,6 +97,7 @@
   "Provides quality control. Reject obviously bad session titles."
   [pname] (or (> (count pname) 120) ;;Want it short enough to tweet
               (some #(not= -1 (.indexOf % pname)) file-lines) ;;Matches our input corpus
+              (some #(not= -1 (.indexOf pname %)) file-lines) ;;Neither string should be substring of other
               (> (count-colons pname) 1)    ;;More than one colon in title
               (< (count (clojure.string/split pname #" ")) 4))) ;;Less than four words in the title
 
